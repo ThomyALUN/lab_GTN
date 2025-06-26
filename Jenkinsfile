@@ -18,7 +18,7 @@ pipeline{
                     // Verifica si el contenedor específico está en ejecución
                     def containerExists = sh(returnStatus: true, script: "sudo docker ps -q -f name=${name_container}")
                     
-                    if (containerExists == 0) {
+                    if (containerExists == 1) {
                         // Si el contenedor existe, detén y elimínalo
                         sh """
                             sudo docker stop ${name_container}
