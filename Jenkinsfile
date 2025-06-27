@@ -1,59 +1,54 @@
-pipeline{
-    agent {
-            label 'web_lab'
+pipeline {
+    agent { label 'web_lab' }
+
+    parameters {
+        string(name: 'NAME_CONTAINER', defaultValue: 'sitio_web',
+               description: 'Nombre del container')
+        string(name: 'IMAGE',         defaultValue: 'php',
+               description: 'Nombre de la imagen')
+        string(name: 'TAG',           defaultValue: '7.4-apache',
+               description: 'Etiqueta / versión de la imagen')
+        string(name: 'PORT',          defaultValue: '80',
+               description: 'Puerto expuesto')
     }
-    parameters{
-        string(name: 'name_container', defaultValue: 'sitio_web', description: 'Nombre del container')
-        string(name: 'name_imagen', defaultValue: 'php', description: 'Nombre de la imagen')
-        string(name: 'tag_imagen', defaultValue: '7.4-apache', description: 'etiqueta y/o version de la imagen')
-        string(name: 'puerto_imagen', defaultValue: '80', description: 'puerto de la imagen')
-    }
 
+    stages {
 
-   stages {
+        stage('detener/limpiar') {
+            steps {
+                script {
+                    // ¿Existe algún contenedor con ese nombre?
+                    def id = sh(script: "docker ps -aq -f name=${params.NAME_CONTAINER}",
+                                returnStdout: true).trim()
 
-        stage('detener/limpiar'){
-            steps{
-                script{
-                    // Verifica si el contenedor específico está en ejecución
-                    def containerExists = sh(returnStatus: true, script: "sudo docker ps -q -f name=${name_container}")
-                    
-                    if (containerExists == 1) {
-                        // Si el contenedor existe, detén y elimínalo
-                        sh """
-                            sudo docker stop ${name_container}
-                            sudo docker rm ${name_container}
-                        """
+                    if (id) {
+                        sh "sudo docker stop ${id}"
+                        sh "sudo docker rm   ${id}"
                     } else {
-                        // Si el contenedor no existe, imprime un mensaje
-                        echo "El contenedor ${name_container} no está en ejecución."
+                        echo "No hay contenedor ${params.NAME_CONTAINER} en ejecución."
                     }
 
-                    // Limpieza del sistema Docker (esto se ejecutará independientemente de si el contenedor existía o no)
-                    sh '''
-                        sudo docker stop ${name_container}
-                        sudo docker system prune -f
-                        sudo docker images purge
-                    '''
+                    // Limpieza: nunca abortar si algo falla
+                    sh "sudo docker system prune -f || true"
+                    sh "sudo docker image  prune -af || true"
                 }
-                
             }
         }
 
         stage('run/build') {
             steps {
-                sh'''
-                sudo docker compose up -d --build 
-                '''
+                // Detener y eliminar contenedores huérfanos si los hubiera
+                sh 'sudo docker compose down --remove-orphans || true'
+                // Levantar la aplicación
+                sh 'sudo docker compose up -d --build'
             }
         }
 
         stage('verification') {
             steps {
-                sh'''
-                sudo docker ps -a
-                '''
+                sh 'sudo docker ps -a'
             }
         }
     }
 }
+
