@@ -18,7 +18,7 @@ pipeline {
             steps {
                 script {
                     // ¿Existe algún contenedor con ese nombre?
-                    def id = sh(script: "docker ps -aq -f name=${params.NAME_CONTAINER}",
+                    def id = sh(script: "sudo docker ps -aq -f name=${params.NAME_CONTAINER}",
                                 returnStdout: true).trim()
 
                     if (id) {
