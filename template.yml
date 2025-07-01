@@ -151,8 +151,8 @@ Resources:
           apt-get install -y docker-ce docker-ce-cli containerd.io
           systemctl start docker
           systemctl enable docker
-          git clone https://github.com/cesarpalacios/JenkinsGTN.git
-          cd JenkinsGTN
+          git clone https://github.com/ThomyALUN/lab_GTN.git
+          cd lab_GTN
           docker compose up -d
           apt-get install -y openjdk-17-jre
 
