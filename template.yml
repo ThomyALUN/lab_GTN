@@ -126,11 +126,6 @@ Resources:
           apt-get install -y jenkins
           systemctl start jenkins
           systemctl enable jenkins
-      NetworkInterfaces:
-        - DeviceIndex: 0
-          SubnetId: !Ref Subnet
-          GroupSet: [!Ref GrupoSeguridadJenkins]
-          AssociatePublicIpAddress: false
 
   instanciaApache:
     Type: AWS::EC2::Instance
@@ -160,11 +155,6 @@ Resources:
           cd JenkinsGTN
           docker compose up -d
           apt-get install -y openjdk-17-jre
-      NetworkInterfaces:
-        - DeviceIndex: 0
-          SubnetId: !Ref Subnet
-          GroupSet: [!Ref GrupoSeguridadApache]
-          AssociatePublicIpAddress: false
 
   JenkinsEIPAssociation:
     Type: AWS::EC2::EIPAssociation
