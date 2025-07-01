@@ -47,7 +47,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.1.0/24
-      MapPublicIpOnLaunch: true
+      MapPublicIpOnLaunch: false
 
   SubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -55,10 +55,11 @@ Resources:
       SubnetId: !Ref Subnet
       RouteTableId: !Ref RouteTable
 
+  # ────────── SEGURIDAD ──────────
   GrupoSeguridadJenkins:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Grupo de Seguridad de Jenkins
+      GroupDescription: SG Jenkins
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -73,7 +74,7 @@ Resources:
   GrupoSeguridadApache:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Grupo de Seguridad de Apache
+      GroupDescription: SG Apache
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -84,6 +85,22 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
+
+  JenkinsEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: jenkins-eip
+
+  ApacheEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: apache-eip
 
   instanciaJenkins:
     Type: AWS::EC2::Instance
@@ -100,19 +117,20 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          # Actualizar el sistema
           apt-get update -y
           apt-get upgrade -y
-          # Instalar dependencias necesarias
           apt-get install -y apt-transport-https ca-certificates curl software-properties-common fontconfig openjdk-17-jre
-          # Agregar la clave GPG y el repositorio de Jenkins
           curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | gpg --dearmor -o /usr/share/keyrings/jenkins-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/" > /etc/apt/sources.list.d/jenkins.list
-          # Instalar Jenkins
           apt-get update -y
           apt-get install -y jenkins
           systemctl start jenkins
           systemctl enable jenkins
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref Subnet
+          GroupSet: [!Ref GrupoSeguridadJenkins]
+          AssociatePublicIpAddress: false
 
   instanciaApache:
     Type: AWS::EC2::Instance
@@ -142,3 +160,28 @@ Resources:
           cd JenkinsGTN
           docker compose up -d
           apt-get install -y openjdk-17-jre
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref Subnet
+          GroupSet: [!Ref GrupoSeguridadApache]
+          AssociatePublicIpAddress: false
+
+  JenkinsEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt JenkinsEIP.AllocationId
+      InstanceId:   !Ref instanciaJenkins
+
+  ApacheEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt ApacheEIP.AllocationId
+      InstanceId:   !Ref instanciaApache
+
+Outputs:
+  JenkinsPublicIP:
+    Description: IP pública fija de Jenkins
+    Value: !Ref JenkinsEIP
+  ApachePublicIP:
+    Description: IP pública fija de Apache
+    Value: !Ref ApacheEIP
